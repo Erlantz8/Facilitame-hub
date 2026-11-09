@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facilítame — Gestión de Tareas e Incidencias Real-Time</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#F0FDFB',
+                            100: '#CCFBF1',
+                            200: '#99F6E4',
+                            300: '#5EEAD4',
+                            400: '#2DD4BF',
+                            500: '#14B8A6', // Primary Teal
+                            600: '#0D9488',
+                            700: '#0F766E',
+                            800: '#115E59',
+                            900: '#134E4A',
+                            accent: '#00C4B4',
+                            dark: '#0F172A',
+                            surface: '#F8FAFC'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F1F5F9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+        .drag-over {
+            border: 2px dashed #14B8A6 !important;
+            background-color: #F0FDFB !important;
+        }
+        .task-card {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- AUTH OVERLAY / LOGIN MODAL -->
+    <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="p-6 bg-gradient-to-tr from-brand-700 to-brand-500 text-white text-center">
+                <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center mx-auto mb-3 text-white border border-white/20">
+                    <i class="fa-solid fa-layer-group text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold tracking-tight">FACILÍTAME HUB</h2>
+                <p class="text-xs text-brand-100 mt-1">Acceso al Sistema de Gestión de Equipo</p>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <!-- Tab Controls -->
+                <div class="flex border-b border-slate-200 text-xs font-semibold">
+                    <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-2 text-brand-600 border-b-2 border-brand-500 text-center">Iniciar Sesión</button>
+                    <button id="tab-register" onclick="switchAuthTab('register')" class="flex-1 py-2 text-slate-400 hover:text-slate-700 text-center">Crear Cuenta</button>
+                </div>
+
+                <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-3">
+                    <div id="field-name" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre Completo *</label>
+                        <input type="text" id="auth-name" placeholder="Ej: Erlantz Aguirre" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Correo Electrónico *</label>
+                        <input type="email" id="auth-email" required placeholder="usuario@facilitame.es" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Contraseña *</label>
+                        <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div id="auth-error" class="hidden text-xs text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200"></div>
+
+                    <button type="submit" id="auth-btn" class="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition shadow-sm">
+                        Entrar a la Plataforma
+                    </button>
+                </form>
+
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-2 text-[10px] text-slate-400 uppercase">O pruébalo rápido</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <button onclick="loginAnonymously()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition">
+                    Entrar como Invitado / Demo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP HEADER / NAVBAR -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand Logo & Status -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                        <i class="fa-solid fa-layer-group text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-xl tracking-tight text-slate-900">FACILÍTAME</span>
+                            <span class="bg-brand-100 text-brand-800 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-brand-200">Real-Time Sync</span>
+                        </div>
+                        <p class="text-xs text-slate-500 hidden sm:block">Centro de Gestión de Equipos e Incidencias</p>
+                    </div>
+                </div>
+
+                <!-- User Profile & Action Buttons -->
+                <div class="flex items-center space-x-3">
+                    <button onclick="openTeamModal()" class="hidden md:inline-flex items-center px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-users text-slate-400 mr-1.5"></i> Equipo
+                    </button>
+
+                    <button onclick="openManageStatusesModal()" class="hidden sm:inline-flex items-center px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-sliders text-slate-400 mr-1.5"></i> Estados
+                    </button>
+                    
+                    <button onclick="openTicketModal()" class="inline-flex items-center px-3.5 py-1.5 border border-transparent rounded-lg text-xs font-semibold text-white bg-brand-500 hover:bg-brand-600 shadow-xs transition">
+                        <i class="fa-solid fa-plus mr-1.5"></i> Nuevo Ticket
+                    </button>
+
+                    <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+                    <!-- Logged User Info -->
+                    <div class="flex items-center space-x-2">
+                        <div id="user-avatar" class="w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                            --
+                        </div>
+                        <div class="hidden lg:block text-left">
+                            <p id="user-name-display" class="text-xs font-semibold text-slate-800 leading-none">Cargando...</p>
+                            <p id="user-role-display" class="text-[10px] text-slate-400 leading-tight">Usuario</p>
+                        </div>
+                        <button onclick="handleLogout()" title="Cerrar Sesión" class="text-slate-400 hover:text-rose-600 p-1">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col space-y-6">
+
+        <!-- METRICS HEADER BANNER -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Tickets</p>
+                    <h3 class="text-2xl font-bold text-slate-900 mt-1" id="stat-total">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                    <i class="fa-solid fa-list-check"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Alta Urgencia</p>
+                    <h3 class="text-2xl font-bold text-rose-600 mt-1" id="stat-high">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Fuera de Plazo</p>
+                    <h3 class="text-2xl font-bold text-amber-600 mt-1" id="stat-overdue">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Completados</p>
+                    <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="stat-completed">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- FILTERS & VIEW TOGGLE -->
+        <section class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-3 flex-1">
+                <!-- Search -->
+                <div class="relative flex-1 min-w-[180px]">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="search-input" placeholder="Buscar ticket o descripción..." 
+                           class="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <!-- Assignee Filter -->
+                <select id="filter-assignee" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="ALL">Todo el Equipo</option>
+                    <option value="MINE">Mis Tareas Asignadas</option>
+                </select>
+
+                <!-- Priority Filter -->
+                <select id="filter-priority" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="ALL">Todas las Prioridades</option>
+                    <option value="Urgente">Urgente</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Media">Media</option>
+                    <option value="Baja">Baja</option>
+                </select>
+
+                <!-- Type Filter -->
+                <select id="filter-type" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="ALL">Todos los Tipos</option>
+                    <option value="Incidencia">Incidencia</option>
+                    <option value="Desarrollo">Desarrollo</option>
+                    <option value="Revisión">Revisión</option>
+                    <option value="Mejora">Mejora</option>
+                    <option value="Soporte">Soporte</option>
+                </select>
+
+                <button onclick="resetFilters()" class="text-xs text-slate-500 hover:text-slate-800 underline px-1">
+                    Limpiar
+                </button>
+            </div>
+
+            <!-- View Switcher -->
+            <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200 self-start md:self-auto">
+                <button id="btn-view-kanban" onclick="switchView('kanban')" class="px-3 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 bg-white text-brand-700 shadow-xs">
+                    <i class="fa-solid fa-table-columns"></i>
+                    <span>Tablero</span>
+                </button>
+                <button id="btn-view-list" onclick="switchView('list')" class="px-3 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 text-slate-600 hover:text-slate-900">
+                    <i class="fa-solid fa-list-ul"></i>
+                    <span>Lista</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- KANBAN CONTAINER -->
+        <section id="kanban-view-container" class="flex-1 overflow-x-auto pb-4">
+            <div id="kanban-board" class="flex gap-5 min-w-[900px] h-full items-start">
+                <!-- Columns render here -->
+            </div>
+        </section>
+
+        <!-- LIST CONTAINER -->
+        <section id="list-view-container" class="hidden flex-1 bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                            <th class="py-3 px-4">Ticket</th>
+                            <th class="py-3 px-4">Estado</th>
+                            <th class="py-3 px-4">Tipo</th>
+                            <th class="py-3 px-4">Prioridad</th>
+                            <th class="py-3 px-4">Asignado a</th>
+                            <th class="py-3 px-4">Fecha Límite</th>
+                            <th class="py-3 px-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="list-table-body" class="divide-y divide-slate-100 text-xs">
+                        <!-- List rows render here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL: TICKET CREATION / EDITING -->
+    <div id="ticket-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 text-base" id="modal-title">
+                    <i class="fa-solid fa-square-plus text-brand-500 mr-2"></i> Nuevo Ticket
+                </h3>
+                <button onclick="closeTicketModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="ticket-form" onsubmit="handleTicketFormSubmit(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="ticket-id">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Título de la Tarea / Incidencia *</label>
+                    <input type="text" id="ticket-title-input" required placeholder="Ej: Error al conectar la API..." 
+                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tipo de Tarea *</label>
+                        <select id="ticket-type-input" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Incidencia">Incidencia</option>
+                            <option value="Desarrollo">Desarrollo</option>
+                            <option value="Revisión">Revisión</option>
+                            <option value="Mejora">Mejora</option>
+                            <option value="Soporte">Soporte</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Prioridad *</label>
+                        <select id="ticket-priority-input" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Urgente">🚨 Urgente</option>
+                            <option value="Alta">🔴 Alta</option>
+                            <option value="Media" selected>🟠 Media</option>
+                            <option value="Baja">🟢 Baja</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Estado *</label>
+                        <select id="ticket-status-input" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Asignar a *</label>
+                        <select id="ticket-assignee-input" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Fecha Límite</label>
+                    <input type="date" id="ticket-duedate-input" 
+                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Descripción detallada</label>
+                    <textarea id="ticket-desc-input" rows="3" placeholder="Añade contexto o notas necesarias..." 
+                              class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
+                </div>
+
+                <!-- Comments Thread (if editing) -->
+                <div id="comments-section" class="hidden pt-3 border-t border-slate-200 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700">Comentarios</h4>
+                    <div id="comments-list" class="space-y-2 max-h-40 overflow-y-auto"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-comment-input" placeholder="Escribe un comentario..." class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                        <button type="button" onclick="addCommentToTicket()" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-semibold">Comentar</button>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
+                    <button type="button" onclick="closeTicketModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold shadow-xs">
+                        Guardar Ticket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: TEAM MANAGMENT -->
+    <div id="team-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 text-base">
+                    <i class="fa-solid fa-users text-brand-500 mr-2"></i> Miembros del Equipo
+                </h3>
+                <button onclick="closeTeamModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <form id="team-add-form" onsubmit="handleAddTeamMember(event)" class="space-y-2">
+                    <p class="text-xs font-semibold text-slate-700">Añadir Nuevo Usuario al Equipo</p>
+                    <input type="text" id="team-new-name" required placeholder="Nombre (Ej: Laura Gómez)" class="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <input type="email" id="team-new-email" required placeholder="Email de empresa" class="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <button type="submit" class="w-full py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold">
+                        Añadir Miembro
+                    </button>
+                </form>
+
+                <div class="space-y-2 max-h-56 overflow-y-auto" id="team-list-container">
+                    <!-- Dynamic team list -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: MANAGE STATUSES -->
+    <div id="status-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 text-base">
+                    <i class="fa-solid fa-sliders text-brand-500 mr-2"></i> Configurar Estados
+                </h3>
+                <button onclick="closeManageStatusesModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="new-status-name" placeholder="Nuevo estado (Ej: En Pruebas)" 
+                           class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <button onclick="addNewStatus()" class="px-3 py-1.5 bg-brand-500 text-white rounded-lg text-xs font-semibold hover:bg-brand-600">
+                        Añadir
+                    </button>
+                </div>
+                <div class="space-y-2 max-h-60 overflow-y-auto" id="statuses-manage-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- APPLICATION ENGINE & REALTIME SYNC SCRIPT -->
+    <script>
+        // Storage Keys
+        const STORAGE_TICKETS = 'facilitame_tickets_v1';
+        const STORAGE_TEAM = 'facilitame_team_v1';
+        const STORAGE_STATUSES = 'facilitame_statuses_v1';
+        const STORAGE_USER = 'facilitame_current_user_v1';
+
+        // Cross-tab Realtime Sync Channel
+        const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('facilitame_hub_sync') : null;
+
+        // Default Initial Datasets
+        const DEFAULT_STATUSES = [
+            { id: 'st_1', title: 'Por Hacer', color: 'bg-slate-500', order: 1 },
+            { id: 'st_2', title: 'En Desarrollo', color: 'bg-sky-500', order: 2 },
+            { id: 'st_3', title: 'En Revisión', color: 'bg-amber-500', order: 3 },
+            { id: 'st_4', title: 'Completado', color: 'bg-emerald-500', order: 4 }
+        ];
+
+        const DEFAULT_TEAM = [
+            { id: 'usr_EA', name: 'Erlantz Aguirre', email: 'erlantz@facilitame.es', initials: 'EA', color: 'bg-brand-600' },
+            { id: 'usr_GT', name: 'Equipo Talenom', email: 'talenom@partner.es', initials: 'GT', color: 'bg-indigo-600' },
+            { id: 'usr_MC', name: 'María Costa', email: 'maria@facilitame.es', initials: 'MC', color: 'bg-rose-600' }
+        ];
+
+        const DEFAULT_TICKETS = [
+            {
+                id: 'TCK-101',
+                title: 'Desarrollo de App White-Label Talenom',
+                description: 'Ajustes visuales de la marca y publicación en App Store y Google Play.',
+                type: 'Desarrollo',
+                priority: 'Alta',
+                statusId: 'st_2',
+                assigneeId: 'usr_EA',
+                dueDate: '2026-11-20',
+                comments: [{ author: 'Erlantz Aguirre', text: 'Entorno inicial de pruebas listo.', date: '2026-11-09' }]
+            },
+            {
+                id: 'TCK-102',
+                title: 'Verificación de Integración Facturas & OCR',
+                description: 'Revisión de flujo automático de centralización documental.',
+                type: 'Revisión',
+                priority: 'Urgente',
+                statusId: 'st_1',
+                assigneeId: 'usr_GT',
+                dueDate: '2026-11-15',
+                comments: []
+            },
+            {
+                id: 'TCK-103',
+                title: 'Módulo de Servicios Externos (Seguros y Ciberseguridad)',
+                description: 'Diseño del catálogo interactivo de servicios integrados.',
+                type: 'Mejora',
+                priority: 'Media',
+                statusId: 'st_3',
+                assigneeId: 'usr_MC',
+                dueDate: '2026-11-25',
+                comments: []
+            }
+        ];
+
+        // State variables
+        let currentUser = null;
+        let authMode = 'login';
+        let currentView = 'kanban';
+        let draggedTicketId = null;
+
+        let tickets = [];
+        let teamMembers = [];
+        let statuses = [];
+
+        // App Initialization
+        window.onload = () => {
+            loadLocalState();
+
+            // Listen to real-time events across browser tabs/windows
+            if (syncChannel) {
+                syncChannel.onmessage = (event) => {
+                    if (event.data && event.data.type === 'STATE_UPDATE') {
+                        loadLocalState();
+                        renderApp();
+                    }
+                };
+            }
+
+            // Check logged user session
+            const savedUser = localStorage.getItem(STORAGE_USER);
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    initAuthenticatedSession();
+                } catch(e) {
+                    showAuthModal();
+                }
+            } else {
+                showAuthModal();
+            }
+
+            // Event Listeners for Filters
+            document.getElementById('search-input')?.addEventListener('input', renderApp);
+            document.getElementById('filter-assignee')?.addEventListener('change', renderApp);
+            document.getElementById('filter-priority')?.addEventListener('change', renderApp);
+            document.getElementById('filter-type')?.addEventListener('change', renderApp);
+        };
+
+        function loadLocalState() {
+            statuses = JSON.parse(localStorage.getItem(STORAGE_STATUSES)) || DEFAULT_STATUSES;
+            teamMembers = JSON.parse(localStorage.getItem(STORAGE_TEAM)) || DEFAULT_TEAM;
+            tickets = JSON.parse(localStorage.getItem(STORAGE_TICKETS)) || DEFAULT_TICKETS;
+            
+            // Persist defaults if first run
+            if (!localStorage.getItem(STORAGE_STATUSES)) localStorage.setItem(STORAGE_STATUSES, JSON.stringify(statuses));
+            if (!localStorage.getItem(STORAGE_TEAM)) localStorage.setItem(STORAGE_TEAM, JSON.stringify(teamMembers));
+            if (!localStorage.getItem(STORAGE_TICKETS)) localStorage.setItem(STORAGE_TICKETS, JSON.stringify(tickets));
+        }
+
+        function notifyStateChange() {
+            localStorage.setItem(STORAGE_STATUSES, JSON.stringify(statuses));
+            localStorage.setItem(STORAGE_TEAM, JSON.stringify(teamMembers));
+            localStorage.setItem(STORAGE_TICKETS, JSON.stringify(tickets));
+            if (syncChannel) {
+                syncChannel.postMessage({ type: 'STATE_UPDATE' });
+            }
+            renderApp();
+        }
+
+        function showAuthModal() {
+            document.getElementById('auth-modal').classList.remove('hidden');
+        }
+
+        function initAuthenticatedSession() {
+            document.getElementById('auth-modal').classList.add('hidden');
+            const initials = currentUser.initials || currentUser.name.slice(0, 2).toUpperCase();
+            document.getElementById('user-avatar').innerText = initials;
+            document.getElementById('user-name-display').innerText = currentUser.name;
+            document.getElementById('user-role-display').innerText = currentUser.email;
+
+            populateTeamSelects();
+            renderApp();
+        }
+
+        // Auth Logic
+        window.switchAuthTab = (mode) => {
+            authMode = mode;
+            document.getElementById('field-name').classList.toggle('hidden', mode === 'login');
+            document.getElementById('auth-btn').innerText = mode === 'login' ? 'Entrar a la Plataforma' : 'Crear Cuenta';
+            document.getElementById('tab-login').className = mode === 'login' ? 'flex-1 py-2 text-brand-600 border-b-2 border-brand-500 text-center' : 'flex-1 py-2 text-slate-400 hover:text-slate-700 text-center';
+            document.getElementById('tab-register').className = mode === 'register' ? 'flex-1 py-2 text-brand-600 border-b-2 border-brand-500 text-center' : 'flex-1 py-2 text-slate-400 hover:text-slate-700 text-center';
+        };
+
+        window.handleAuthSubmit = (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const nameInput = document.getElementById('auth-name').value.trim();
+
+            if (authMode === 'register') {
+                const name = nameInput || email.split('@')[0];
+                const newUser = {
+                    id: 'usr_' + Date.now(),
+                    name: name,
+                    email: email,
+                    initials: name.slice(0, 2).toUpperCase(),
+                    color: 'bg-brand-600'
+                };
+                teamMembers.push(newUser);
+                currentUser = newUser;
+            } else {
+                const existing = teamMembers.find(m => m.email.toLowerCase() === email.toLowerCase());
+                if (existing) {
+                    currentUser = existing;
+                } else {
+                    const name = email.split('@')[0];
+                    currentUser = {
+                        id: 'usr_' + Date.now(),
+                        name: name,
+                        email: email,
+                        initials: name.slice(0, 2).toUpperCase(),
+                        color: 'bg-brand-600'
+                    };
+                    teamMembers.push(currentUser);
+                }
+            }
+
+            localStorage.setItem(STORAGE_USER, JSON.stringify(currentUser));
+            notifyStateChange();
+            initAuthenticatedSession();
+        };
+
+        window.loginAnonymously = () => {
+            currentUser = {
+                id: 'usr_guest',
+                name: 'Invitado / Demo',
+                email: 'demo@facilitame.es',
+                initials: 'DM',
+                color: 'bg-slate-700'
+            };
+            localStorage.setItem(STORAGE_USER, JSON.stringify(currentUser));
+            initAuthenticatedSession();
+        };
+
+        window.handleLogout = () => {
+            localStorage.removeItem(STORAGE_USER);
+            currentUser = null;
+            showAuthModal();
+        };
+
+        // Render Logic
+        function renderApp() {
+            updateStats();
+            populateStatusSelects();
+
+            if (currentView === 'kanban') {
+                renderKanbanView();
+            } else {
+                renderListView();
+            }
+        }
+
+        function getFilteredTickets() {
+            const search = (document.getElementById('search-input')?.value || '').toLowerCase();
+            const assignee = document.getElementById('filter-assignee')?.value || 'ALL';
+            const priority = document.getElementById('filter-priority')?.value || 'ALL';
+            const type = document.getElementById('filter-type')?.value || 'ALL';
+
+            return tickets.filter(t => {
+                const matchSearch = t.title.toLowerCase().includes(search) || (t.description || '').toLowerCase().includes(search);
+                const matchAssignee = assignee === 'ALL' ? true : (assignee === 'MINE' ? t.assigneeId === currentUser?.id : t.assigneeId === assignee);
+                const matchPriority = priority === 'ALL' || t.priority === priority;
+                const matchType = type === 'ALL' || t.type === type;
+
+                return matchSearch && matchAssignee && matchPriority && matchType;
+            });
+        }
+
+        function updateStats() {
+            const filtered = getFilteredTickets();
+            const today = new Date().toISOString().split('T')[0];
+
+            document.getElementById('stat-total').innerText = filtered.length;
+            document.getElementById('stat-high').innerText = filtered.filter(t => t.priority === 'Alta' || t.priority === 'Urgente').length;
+            
+            const completedStatus = statuses.find(s => s.title.toLowerCase().includes('completado'));
+            const compId = completedStatus ? completedStatus.id : '';
+            document.getElementById('stat-completed').innerText = filtered.filter(t => t.statusId === compId).length;
+
+            document.getElementById('stat-overdue').innerText = filtered.filter(t => t.dueDate && t.dueDate < today && t.statusId !== compId).length;
+        }
+
+        function renderKanbanView() {
+            const board = document.getElementById('kanban-board');
+            if (!board) return;
+            board.innerHTML = '';
+
+            const filteredTickets = getFilteredTickets();
+            const sortedStatuses = [...statuses].sort((a,b) => (a.order || 0) - (b.order || 0));
+
+            sortedStatuses.forEach(status => {
+                const colTickets = filteredTickets.filter(t => t.statusId === status.id);
+
+                const col = document.createElement('div');
+                col.className = 'flex-1 min-w-[280px] max-w-[340px] bg-slate-100/70 rounded-xl p-3 border border-slate-200/60 flex flex-col max-h-[calc(100vh-250px)]';
+                col.setAttribute('ondragover', 'handleDragOver(event)');
+                col.setAttribute('ondragleave', 'handleDragLeave(event)');
+                col.setAttribute('ondrop', `handleDrop(event, '${status.id}')`);
+
+                col.innerHTML = `
+                    <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-200/80">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full ${status.color || 'bg-brand-500'}"></span>
+                            <h4 class="font-bold text-xs text-slate-700 uppercase tracking-wide">${status.title}</h4>
+                            <span class="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">${colTickets.length}</span>
+                        </div>
+                        <button onclick="openTicketModalWithStatus('${status.id}')" class="text-slate-400 hover:text-slate-700 text-xs p-1">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+                        ${colTickets.map(t => createCardHtml(t)).join('')}
+                    </div>
+                `;
+
+                board.appendChild(col);
+            });
+        }
+
+        function createCardHtml(t) {
+            const assignee = teamMembers.find(m => m.id === t.assigneeId) || { name: 'Sin asignar', initials: '??', color: 'bg-slate-400' };
+            const isOverdue = t.dueDate && t.dueDate < new Date().toISOString().split('T')[0];
+
+            return `
+                <div class="task-card bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs cursor-grab active:cursor-grabbing" 
+                     draggable="true" 
+                     ondragstart="handleDragStart(event, '${t.id}')">
+                    
+                    <div class="flex items-center justify-between gap-1 mb-2">
+                        <span class="bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-full">${t.type}</span>
+                        ${getPriorityBadge(t.priority)}
+                    </div>
+
+                    <h5 class="font-semibold text-xs text-slate-800 mb-1 leading-snug hover:text-brand-600 cursor-pointer" 
+                        onclick="openEditTicketModal('${t.id}')">
+                        ${t.title}
+                    </h5>
+
+                    ${t.description ? `<p class="text-[11px] text-slate-500 line-clamp-2 mb-3 leading-relaxed">${t.description}</p>` : ''}
+
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+                        <div class="flex items-center space-x-1 ${isOverdue ? 'text-rose-600 font-semibold' : ''}">
+                            <i class="fa-regular fa-calendar text-[10px]"></i>
+                            <span>${t.dueDate ? formatDate(t.dueDate) : 'Sin fecha'}</span>
+                        </div>
+
+                        <div class="w-6 h-6 rounded-full ${assignee.color || 'bg-brand-500'} text-white font-bold text-[9px] flex items-center justify-center border border-white" title="${assignee.name}">
+                            ${assignee.initials || 'U'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderListView() {
+            const tbody = document.getElementById('list-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const filteredTickets = getFilteredTickets();
+            filteredTickets.forEach(t => {
+                const status = statuses.find(s => s.id === t.statusId) || { title: 'General', color: 'bg-slate-400' };
+                const assignee = teamMembers.find(m => m.id === t.assigneeId) || { name: 'Sin asignar', initials: '??' };
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/80 transition';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-slate-800">
+                        <span onclick="openEditTicketModal('${t.id}')" class="hover:text-brand-600 cursor-pointer">${t.title}</span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">
+                            <span class="w-1.5 h-1.5 rounded-full ${status.color}"></span>
+                            <span>${status.title}</span>
+                        </span>
+                    </td>
+                    <td class="py-3 px-4"><span class="bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-full">${t.type}</span></td>
+                    <td class="py-3 px-4">${getPriorityBadge(t.priority)}</td>
+                    <td class="py-3 px-4">${assignee.name}</td>
+                    <td class="py-3 px-4">${t.dueDate ? formatDate(t.dueDate) : '—'}</td>
+                    <td class="py-3 px-4 text-right space-x-2">
+                        <button onclick="openEditTicketModal('${t.id}')" class="text-slate-400 hover:text-brand-600"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteTicket('${t.id}')" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Global Event Binding & Form Actions
+        window.switchView = (view) => {
+            currentView = view;
+            document.getElementById('kanban-view-container').classList.toggle('hidden', view !== 'kanban');
+            document.getElementById('list-view-container').classList.toggle('hidden', view !== 'list');
+            renderApp();
+        };
+
+        window.openTicketModal = () => {
+            document.getElementById('ticket-id').value = '';
+            document.getElementById('ticket-form').reset();
+            document.getElementById('comments-section').classList.add('hidden');
+            document.getElementById('ticket-modal').classList.remove('hidden');
+        };
+
+        window.openTicketModalWithStatus = (stId) => {
+            openTicketModal();
+            document.getElementById('ticket-status-input').value = stId;
+        };
+
+        window.openEditTicketModal = (id) => {
+            const t = tickets.find(x => x.id === id);
+            if (!t) return;
+            document.getElementById('ticket-id').value = t.id;
+            document.getElementById('ticket-title-input').value = t.title;
+            document.getElementById('ticket-type-input').value = t.type;
+            document.getElementById('ticket-priority-input').value = t.priority;
+            document.getElementById('ticket-status-input').value = t.statusId;
+            document.getElementById('ticket-assignee-input').value = t.assigneeId;
+            document.getElementById('ticket-duedate-input').value = t.dueDate || '';
+            document.getElementById('ticket-desc-input').value = t.description || '';
+
+            // Render comments
+            const commentsList = document.getElementById('comments-list');
+            commentsList.innerHTML = (t.comments || []).map(c => `
+                <div class="bg-slate-50 p-2 rounded-lg text-xs">
+                    <span class="font-bold text-slate-700">${c.author}:</span> ${c.text}
+                </div>
+            `).join('');
+            document.getElementById('comments-section').classList.remove('hidden');
+
+            document.getElementById('ticket-modal').classList.remove('hidden');
+        };
+
+        window.closeTicketModal = () => document.getElementById('ticket-modal').classList.add('hidden');
+
+        window.handleTicketFormSubmit = (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('ticket-id').value;
+            const id = editId || 'TCK-' + Math.floor(100 + Math.random() * 900);
+            
+            const newTicketData = {
+                id,
+                title: document.getElementById('ticket-title-input').value,
+                type: document.getElementById('ticket-type-input').value,
+                priority: document.getElementById('ticket-priority-input').value,
+                statusId: document.getElementById('ticket-status-input').value,
+                assigneeId: document.getElementById('ticket-assignee-input').value,
+                dueDate: document.getElementById('ticket-duedate-input').value,
+                description: document.getElementById('ticket-desc-input').value,
+                comments: editId ? (tickets.find(x => x.id === editId)?.comments || []) : []
+            };
+
+            if (editId) {
+                tickets = tickets.map(t => t.id === editId ? newTicketData : t);
+            } else {
+                tickets.push(newTicketData);
+            }
+
+            notifyStateChange();
+            closeTicketModal();
+        };
+
+        window.addCommentToTicket = () => {
+            const id = document.getElementById('ticket-id').value;
+            const input = document.getElementById('new-comment-input');
+            if (!id || !input.value.trim()) return;
+
+            const t = tickets.find(x => x.id === id);
+            if (!t.comments) t.comments = [];
+            
+            t.comments.push({
+                author: currentUser ? currentUser.name : 'Usuario',
+                text: input.value.trim(),
+                date: new Date().toISOString().split('T')[0]
+            });
+
+            notifyStateChange();
+            input.value = '';
+            openEditTicketModal(id);
+        };
+
+        window.deleteTicket = (id) => {
+            tickets = tickets.filter(t => t.id !== id);
+            notifyStateChange();
+        };
+
+        // Drag and Drop
+        window.handleDragStart = (e, id) => { draggedTicketId = id; };
+        window.handleDragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); };
+        window.handleDragLeave = (e) => { e.currentTarget.classList.remove('drag-over'); };
+        window.handleDrop = (e, targetStatusId) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (draggedTicketId) {
+                tickets = tickets.map(t => t.id === draggedTicketId ? { ...t, statusId: targetStatusId } : t);
+                notifyStateChange();
+            }
+        };
+
+        // Team Management Modals
+        window.openTeamModal = () => document.getElementById('team-modal').classList.remove('hidden');
+        window.closeTeamModal = () => document.getElementById('team-modal').classList.add('hidden');
+        
+        window.handleAddTeamMember = (e) => {
+            e.preventDefault();
+            const name = document.getElementById('team-new-name').value.trim();
+            const email = document.getElementById('team-new-email').value.trim();
+            const uid = 'usr_' + Date.now();
+            
+            teamMembers.push({
+                id: uid,
+                name,
+                email,
+                initials: name.slice(0, 2).toUpperCase(),
+                color: 'bg-brand-600'
+            });
+
+            notifyStateChange();
+            populateTeamSelects();
+            document.getElementById('team-add-form').reset();
+        };
+
+        function populateTeamSelects() {
+            const filter = document.getElementById('filter-assignee');
+            const formSel = document.getElementById('ticket-assignee-input');
+            const teamContainer = document.getElementById('team-list-container');
+
+            if (filter) {
+                const currentVal = filter.value;
+                filter.innerHTML = `<option value="ALL">Todo el Equipo</option><option value="MINE">Mis Tareas Asignadas</option>`;
+                teamMembers.forEach(m => {
+                    filter.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+                });
+                filter.value = currentVal || 'ALL';
+            }
+
+            if (formSel) {
+                formSel.innerHTML = teamMembers.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+            }
+
+            if (teamContainer) {
+                teamContainer.innerHTML = teamMembers.map(m => `
+                    <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-6 h-6 rounded-full ${m.color || 'bg-brand-600'} text-white font-bold text-[9px] flex items-center justify-center">${m.initials}</span>
+                            <div>
+                                <p class="font-semibold text-slate-800 leading-none">${m.name}</p>
+                                <p class="text-[10px] text-slate-400">${m.email}</p>
+                            </div>
+                        </div>
+                        <button onclick="deleteTeamMember('${m.id}')" title="Eliminar del equipo" class="text-slate-400 hover:text-rose-600 p-1 transition">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        window.deleteTeamMember = (memberId) => {
+            // Remove member from array
+            teamMembers = teamMembers.filter(m => m.id !== memberId);
+            
+            // Reassign any tickets assigned to this member back to empty/unassigned
+            tickets = tickets.map(t => {
+                if (t.assigneeId === memberId) {
+                    return { ...t, assigneeId: '' };
+                }
+                return t;
+            });
+
+            notifyStateChange();
+            populateTeamSelects();
+        };
+
+        function populateStatusSelects() {
+<!-- ... existing code -->
