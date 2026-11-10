@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facilítame — Gestión de Tareas e Incidencias Real-Time</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#F0FDFB',
+                            100: '#CCFBF1',
+                            200: '#99F6E4',
+                            300: '#5EEAD4',
+                            400: '#2DD4BF',
+                            500: '#14B8A6',
+                            600: '#0D9488',
+                            700: '#0F766E',
+                            800: '#115E59',
+                            900: '#134E4A',
+                            accent: '#00C4B4',
+                            dark: '#0F172A',
+                            surface: '#F8FAFC'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        .drag-over { border: 2px dashed #14B8A6 !important; background-color: #F0FDFB !important; }
+        .task-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+        .task-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- TOP HEADER / NAVBAR -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand Logo & Status -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                        <i class="fa-solid fa-layer-group text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-xl tracking-tight text-slate-900">FACILÍTAME</span>
+                            <span class="bg-brand-100 text-brand-800 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-brand-200">Real-Time Sync</span>
+                        </div>
+                        <p class="text-xs text-slate-500 hidden sm:block">Centro de Gestión de Equipos e Incidencias</p>
+                    </div>
+                </div>
+
+                <!-- Action Buttons & User Profile -->
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <button onclick="openHistoryModal()" class="inline-flex items-center px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-clock-rotate-left text-slate-400 mr-1.5"></i> Historial
+                    </button>
+
+                    <button onclick="openTeamModal()" class="hidden md:inline-flex items-center px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-users text-slate-400 mr-1.5"></i> Equipo
+                    </button>
+
+                    <button onclick="openManageStatusesModal()" class="hidden sm:inline-flex items-center px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-sliders text-slate-400 mr-1.5"></i> Estados
+                    </button>
+                    
+                    <button onclick="openTicketModal()" class="inline-flex items-center px-3.5 py-1.5 border border-transparent rounded-lg text-xs font-semibold text-white bg-brand-500 hover:bg-brand-600 shadow-xs transition">
+                        <i class="fa-solid fa-plus mr-1.5"></i> Nuevo Ticket
+                    </button>
+
+                    <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+                    <!-- Logged User Info -->
+                    <div class="flex items-center space-x-2">
+                        <div id="user-avatar" class="w-8 h-8 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                            EA
+                        </div>
+                        <div class="hidden lg:block text-left">
+                            <p id="user-name-display" class="text-xs font-semibold text-slate-800 leading-none">Erlantz Aguirre</p>
+                            <p id="user-role-display" class="text-[10px] text-slate-400 leading-tight">erlantz@facilitame.es</p>
+                        </div>
+                        <button onclick="switchUserSession()" title="Cambiar de usuario" class="text-slate-400 hover:text-brand-600 p-1">
+                            <i class="fa-solid fa-user-gear"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col space-y-6">
+
+        <!-- METRICS HEADER BANNER -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Tickets</p>
+                    <h3 class="text-2xl font-bold text-slate-900 mt-1" id="stat-total">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                    <i class="fa-solid fa-list-check"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Alta Urgencia</p>
+                    <h3 class="text-2xl font-bold text-rose-600 mt-1" id="stat-high">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Fuera de Plazo</p>
+                    <h3 class="text-2xl font-bold text-amber-600 mt-1" id="stat-overdue">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Completados</p>
+                    <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="stat-completed">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- FILTERS & VIEW TOGGLE -->
+        <section class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-3 flex-1">
+                <div class="relative flex-1 min-w-[180px]">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="search-input" placeholder="Buscar ticket o descripción..." 
+                           class="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <select id="filter-assignee" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="ALL">Todo el Equipo</option>
+                    <option value="MINE">Mis Tareas Asignadas</option>
+                </select>
+
+                <select id="filter-priority" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="ALL">Todas las Prioridades</option>
+                    <option value="Urgente">Urgente</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Media">Media</option>
+                    <option value="Baja">Baja</option>
+                </select>
+
+                <select id="filter-type" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="ALL">Todos los Tipos</option>
+                    <option value="Incidencia">Incidencia</option>
+                    <option value="Desarrollo">Desarrollo</option>
+                    <option value="Revisión">Revisión</option>
+                    <option value="Mejora">Mejora</option>
+                    <option value="Soporte">Soporte</option>
+                </select>
+
+                <button onclick="resetFilters()" class="text-xs text-slate-500 hover:text-slate-800 underline px-1">
+                    Limpiar
+                </button>
+            </div>
+
+            <!-- View Switcher -->
+            <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg border border-slate-200 self-start md:self-auto">
+                <button id="btn-view-kanban" onclick="switchView('kanban')" class="px-3 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 bg-white text-brand-700 shadow-xs">
+                    <i class="fa-solid fa-table-columns"></i>
+                    <span>Tablero</span>
+                </button>
+                <button id="btn-view-list" onclick="switchView('list')" class="px-3 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 text-slate-600 hover:text-slate-900">
+                    <i class="fa-solid fa-list-ul"></i>
+                    <span>Lista</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- KANBAN CONTAINER -->
+        <section id="kanban-view-container" class="flex-1 overflow-x-auto pb-4">
+            <div id="kanban-board" class="flex gap-5 min-w-[900px] h-full items-start"></div>
+        </section>
+
+        <!-- LIST CONTAINER -->
+        <section id="list-view-container" class="hidden flex-1 bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                            <th class="py-3 px-4">Ticket</th>
+                            <th class="py-3 px-4">Estado</th>
+                            <th class="py-3 px-4">Tipo</th>
+                            <th class="py-3 px-4">Prioridad</th>
+                            <th class="py-3 px-4">Asignado a</th>
+                            <th class="py-3 px-4">Fecha Límite</th>
+                            <th class="py-3 px-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="list-table-body" class="divide-y divide-slate-100 text-xs"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL: TICKET CREATION / EDITING -->
+    <div id="ticket-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 text-base" id="modal-title">
+                    <i class="fa-solid fa-square-plus text-brand-500 mr-2"></i> Nuevo Ticket
+                </h3>
+                <button onclick="closeTicketModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="ticket-form" onsubmit="handleTicketFormSubmit(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="ticket-id">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Título de la Tarea / Incidencia *</label>
+                    <input type="text" id="ticket-title-input" required placeholder="Ej: Error al conectar la API..." 
+                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tipo de Tarea *</label>
+                        <select id="ticket-type-input" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Incidencia">Incidencia</option>
+                            <option value="Desarrollo">Desarrollo</option>
+                            <option value="Revisión">Revisión</option>
+                            <option value="Mejora">Mejora</option>
+                            <option value="Soporte">Soporte</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Prioridad *</label>
+                        <select id="ticket-priority-input" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="Urgente">🚨 Urgente</option>
+                            <option value="Alta">🔴 Alta</option>
+                            <option value="Media" selected>🟠 Media</option>
+                            <option value="Baja">🟢 Baja</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Estado *</label>
+                        <select id="ticket-status-input" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"></select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Asignar a *</label>
+                        <select id="ticket-assignee-input" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"></select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Fecha Límite</label>
+                    <input type="date" id="ticket-duedate-input" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Descripción detallada</label>
+                    <textarea id="ticket-desc-input" rows="3" placeholder="Añade contexto o notas necesarias..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
+                </div>
+
+                <!-- Comments Thread -->
+                <div id="comments-section" class="hidden pt-3 border-t border-slate-200 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700">Comentarios</h4>
+                    <div id="comments-list" class="space-y-2 max-h-40 overflow-y-auto"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-comment-input" placeholder="Escribe un comentario..." class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                        <button type="button" onclick="addCommentToTicket()" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-semibold">Comentar</button>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <button type="button" id="btn-delete-ticket-modal" onclick="deleteCurrentEditingTicket()" class="hidden px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs font-semibold transition">
+                        <i class="fa-solid fa-trash mr-1"></i> Eliminar Ticket
+                    </button>
+                    <div class="flex items-center space-x-2 ml-auto">
+                        <button type="button" onclick="closeTicketModal()" class="px-4 py-2 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold shadow-xs">Guardar Ticket</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: TEAM MANAGEMENT -->
+    <div id="team-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 text-base"><i class="fa-solid fa-users text-brand-500 mr-2"></i> Miembros del Equipo</h3>
+                <button onclick="closeTeamModal()" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <form id="team-add-form" onsubmit="handleAddTeamMember(event)" class="space-y-2">
+                    <p class="text-xs font-semibold text-slate-700">Añadir Nuevo Usuario al Equipo</p>
+                    <input type="text" id="team-new-name" required placeholder="Nombre (Ej: Laura Gómez)" class="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <input type="email" id="team-new-email" required placeholder="Email de empresa" class="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <button type="submit" class="w-full py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold">Añadir Miembro</button>
+                </form>
+                <div class="space-y-2 max-h-56 overflow-y-auto" id="team-list-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: MANAGE STATUSES -->
+    <div id="status-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 text-base"><i class="fa-solid fa-sliders text-brand-500 mr-2"></i> Configurar Estados</h3>
+                <button onclick="closeManageStatusesModal()" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="new-status-name" placeholder="Nuevo estado (Ej: En Pruebas)" class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <button onclick="addNewStatus()" class="px-3 py-1.5 bg-brand-500 text-white rounded-lg text-xs font-semibold hover:bg-brand-600">Añadir</button>
+                </div>
+                <div class="space-y-2 max-h-60 overflow-y-auto" id="statuses-manage-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTORY & AUDIT LOG -->
+    <div id="history-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 text-base">
+                    <i class="fa-solid fa-clock-rotate-left text-brand-500 mr-2"></i> Historial y Tickets Eliminados
+                </h3>
+                <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-4 flex-1 overflow-y-auto">
+                <p class="text-xs text-slate-500">Registro de auditoría con todas las acciones realizadas (creaciones, cambios, eliminaciones de tickets y equipo).</p>
+                <div class="space-y-2" id="history-list-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- APPLICATION ENGINE SCRIPT -->
+    <script>
+        const STORAGE_TICKETS = 'facilitame_tickets_v1';
+        const STORAGE_TEAM = 'facilitame_team_v1';
+        const STORAGE_STATUSES = 'facilitame_statuses_v1';
+        const STORAGE_USER = 'facilitame_current_user_v1';
+        const STORAGE_HISTORY = 'facilitame_history_v1';
+
+        const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('facilitame_hub_sync') : null;
+
+        const DEFAULT_STATUSES = [
+            { id: 'st_1', title: 'Por Hacer', color: 'bg-slate-500', order: 1 },
+            { id: 'st_2', title: 'En Desarrollo', color: 'bg-sky-500', order: 2 },
+            { id: 'st_3', title: 'En Revisión', color: 'bg-amber-500', order: 3 },
+            { id: 'st_4', title: 'Completado', color: 'bg-emerald-500', order: 4 }
+        ];
+
+        const DEFAULT_TEAM = [
+            { id: 'usr_EA', name: 'Erlantz Aguirre', email: 'erlantz@facilitame.es', initials: 'EA', color: 'bg-brand-600' },
+            { id: 'usr_GT', name: 'Equipo Talenom', email: 'talenom@partner.es', initials: 'GT', color: 'bg-indigo-600' },
+            { id: 'usr_MC', name: 'María Costa', email: 'maria@facilitame.es', initials: 'MC', color: 'bg-rose-600' }
+        ];
+
+        const DEFAULT_TICKETS = [
+            {
+                id: 'TCK-101',
+                title: 'Desarrollo de App White-Label Talenom',
+                description: 'Ajustes visuales de la marca y publicación en App Store y Google Play.',
+                type: 'Desarrollo',
+                priority: 'Alta',
+                statusId: 'st_2',
+                assigneeId: 'usr_EA',
+                dueDate: '2026-11-20',
+                comments: [{ author: 'Erlantz Aguirre', text: 'Entorno inicial de pruebas listo.', date: '2026-11-09' }]
+            }
+        ];
+
+        let currentUser = null;
+        let currentView = 'kanban';
+        let draggedTicketId = null;
+
+        let tickets = [];
+        let teamMembers = [];
+        let statuses = [];
+        let historyLogs = [];
+
+        window.onload = () => {
+            loadLocalState();
+
+            if (syncChannel) {
+                syncChannel.onmessage = (event) => {
+                    if (event.data && event.data.type === 'STATE_UPDATE') {
+                        loadLocalState();
+                        renderApp();
+                    }
+                };
+            }
+
+            // CORRECCIÓN SESIÓN: Si ya hay un usuario guardado o equipo por defecto, no se pide login nunca más.
+            const savedUser = localStorage.getItem(STORAGE_USER);
+            if (savedUser) {
+                try { currentUser = JSON.parse(savedUser); } catch(e) { currentUser = teamMembers[0]; }
+            } else {
+                currentUser = teamMembers[0];
+                localStorage.setItem(STORAGE_USER, JSON.stringify(currentUser));
+            }
+
+            initAuthenticatedSession();
+
+            document.getElementById('search-input')?.addEventListener('input', renderApp);
+            document.getElementById('filter-assignee')?.addEventListener('change', renderApp);
+            document.getElementById('filter-priority')?.addEventListener('change', renderApp);
+            document.getElementById('filter-type')?.addEventListener('change', renderApp);
+        };
+
+        function loadLocalState() {
+            statuses = JSON.parse(localStorage.getItem(STORAGE_STATUSES)) || DEFAULT_STATUSES;
+            teamMembers = JSON.parse(localStorage.getItem(STORAGE_TEAM)) || DEFAULT_TEAM;
+            tickets = JSON.parse(localStorage.getItem(STORAGE_TICKETS)) || DEFAULT_TICKETS;
+            historyLogs = JSON.parse(localStorage.getItem(STORAGE_HISTORY)) || [];
+            
+            if (!localStorage.getItem(STORAGE_STATUSES)) localStorage.setItem(STORAGE_STATUSES, JSON.stringify(statuses));
+            if (!localStorage.getItem(STORAGE_TEAM)) localStorage.setItem(STORAGE_TEAM, JSON.stringify(teamMembers));
+            if (!localStorage.getItem(STORAGE_TICKETS)) localStorage.setItem(STORAGE_TICKETS, JSON.stringify(tickets));
+        }
+
+        function notifyStateChange(actionDescription = '') {
+            localStorage.setItem(STORAGE_STATUSES, JSON.stringify(statuses));
+            localStorage.setItem(STORAGE_TEAM, JSON.stringify(teamMembers));
+            localStorage.setItem(STORAGE_TICKETS, JSON.stringify(tickets));
+            
+            if (actionDescription) {
+                const logEntry = {
+                    id: 'log_' + Date.now(),
+                    date: new Date().toLocaleString(),
+                    author: currentUser ? currentUser.name : 'Sistema',
+                    text: actionDescription
+                };
+                historyLogs.unshift(logEntry);
+                localStorage.setItem(STORAGE_HISTORY, JSON.stringify(historyLogs));
+            }
+
+            if (syncChannel) {
+                syncChannel.postMessage({ type: 'STATE_UPDATE' });
+            }
+            renderApp();
+        }
+
+        function switchUserSession() {
+            const names = teamMembers.map(m => m.name).join(', ');
+            const chosen = prompt(`Elige el miembro activo actual (${names}):`, currentUser ? currentUser.name : '');
+            const found = teamMembers.find(m => m.name.toLowerCase() === (chosen || '').toLowerCase());
+            if (found) {
+                currentUser = found;
+                localStorage.setItem(STORAGE_USER, JSON.stringify(currentUser));
+                initAuthenticatedSession();
+            }
+        }
+
+        function initAuthenticatedSession() {
+            if (!currentUser && teamMembers.length > 0) currentUser = teamMembers[0];
+            if (!currentUser) return;
+            document.getElementById('user-name-display').innerText = currentUser.name;
+            document.getElementById('user-role-display').innerText = currentUser.email;
+            document.getElementById('user-avatar').innerText = currentUser.initials || 'US';
+            renderApp();
+        }
+
+        function switchView(view) {
+            currentView = view;
+            const kanbanContainer = document.getElementById('kanban-view-container');
+            const listContainer = document.getElementById('list-view-container');
+            const btnKanban = document.getElementById('btn-view-kanban');
+            const btnList = document.getElementById('btn-view-list');
+
+            if (view === 'kanban') {
+                kanbanContainer.classList.remove('hidden');
+                listContainer.classList.add('hidden');
+                btnKanban.className = "px-3 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 bg-white text-brand-700 shadow-xs";
+                btnList.className = "px-3 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 text-slate-600 hover:text-slate-900";
+            } else {
+                kanbanContainer.classList.add('hidden');
+                listContainer.classList.remove('hidden');
+                btnList.className = "px-3 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 bg-white text-brand-700 shadow-xs";
+                btnKanban.className = "px-3 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 text-slate-600 hover:text-slate-900";
+            }
+            renderApp();
+        }
+
+        function renderApp() {
+            loadLocalState();
+            updateMetrics();
+            populateFilterAssignees();
+
+            const filtered = getFilteredTickets();
+            if (currentView === 'kanban') {
+                renderKanbanBoard(filtered);
+            } else {
+                renderListView(filtered);
+            }
+        }
+
+        function getFilteredTickets() {
+            const search = document.getElementById('search-input')?.value.toLowerCase() || '';
+            const assigneeFilter = document.getElementById('filter-assignee')?.value || 'ALL';
+            const priorityFilter = document.getElementById('filter-priority')?.value || 'ALL';
+            const typeFilter = document.getElementById('filter-type')?.value || 'ALL';
+
+            return tickets.filter(t => {
+                const matchesSearch = t.title.toLowerCase().includes(search) || (t.description && t.description.toLowerCase().includes(search));
+                const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter;
+                const matchesType = typeFilter === 'ALL' || t.type === typeFilter;
+                
+                let matchesAssignee = true;
+                if (assigneeFilter === 'MINE' && currentUser) {
+                    matchesAssignee = t.assigneeId === currentUser.id;
+                } else if (assigneeFilter !== 'ALL') {
+                    matchesAssignee = t.assigneeId === assigneeFilter;
+                }
+
+                return matchesSearch && matchesPriority && matchesType && matchesAssignee;
+            });
+        }
+
+        function updateMetrics() {
+            const total = tickets.length;
+            const high = tickets.filter(t => t.priority === 'Urgente' || t.priority === 'Alta').length;
+            const todayStr = new Date().toISOString().split('T')[0];
+            const overdue = tickets.filter(t => t.dueDate && t.dueDate < todayStr && t.statusId !== 'st_4').length;
+            const completed = tickets.filter(t => t.statusId === 'st_4').length;
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-high').innerText = high;
+            document.getElementById('stat-overdue').innerText = overdue;
+            document.getElementById('stat-completed').innerText = completed;
+        }
+
+        function populateFilterAssignees() {
+            const sel = document.getElementById('filter-assignee');
+            if (!sel) return;
+            const currentVal = sel.value;
+            sel.innerHTML = `
+                <option value="ALL">Todo el Equipo</option>
+                <option value="MINE">Mis Tareas Asignadas</option>
+            `;
+            teamMembers.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.innerText = m.name;
+                sel.appendChild(opt);
+            });
+            sel.value = currentVal;
+        }
+
+        function renderKanbanBoard(filteredTickets) {
+            const board = document.getElementById('kanban-board');
+            if (!board) return;
+            board.innerHTML = '';
+
+            statuses.forEach(status => {
+                const colTickets = filteredTickets.filter(t => t.statusId === status.id);
+
+                const colDiv = document.createElement('div');
+                colDiv.className = "flex-1 min-w-[280px] bg-slate-100/70 rounded-xl p-3 flex flex-col border border-slate-200/60";
+                colDiv.ondragover = (e) => { e.preventDefault(); colDiv.classList.add('drag-over'); };
+                colDiv.ondragleave = () => { colDiv.classList.remove('drag-over'); };
+                colDiv.ondrop = (e) => {
+                    e.preventDefault();
+                    colDiv.classList.remove('drag-over');
+                    if (draggedTicketId) {
+                        updateTicketStatus(draggedTicketId, status.id);
+                    }
+                };
+
+                colDiv.innerHTML = `
+                    <div class="flex items-center justify-between pb-3 mb-2 border-b border-slate-200">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full ${status.color}"></span>
+                            <h4 class="font-bold text-xs text-slate-800 uppercase tracking-wide">${status.title}</h4>
+                            <span class="bg-slate-200 text-slate-700 font-semibold text-[10px] px-1.5 py-0.2 rounded-full">${colTickets.length}</span>
+                        </div>
+                        <button onclick="openTicketModalWithStatus('${status.id}')" class="text-slate-400 hover:text-slate-700 text-xs"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <div class="flex-1 space-y-3 overflow-y-auto min-h-[300px] p-1" id="col-drop-${status.id}"></div>
+                `;
+
+                const cardsContainer = colDiv.querySelector(`#col-drop-${status.id}`);
+                colTickets.forEach(ticket => { cardsContainer.appendChild(createTicketCardElement(ticket)); });
+                board.appendChild(colDiv);
+            });
+        }
+
+        function createTicketCardElement(ticket) {
+            const card = document.createElement('div');
+            card.className = "task-card bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs cursor-grab active:cursor-grabbing space-y-2.5";
+            card.draggable = true;
+            card.ondragstart = () => { draggedTicketId = ticket.id; };
+
+            const assignee = teamMembers.find(m => m.id === ticket.assigneeId) || { name: 'Sin asignar', initials: '?', color: 'bg-slate-400' };
+
+            let priorityBadge = '';
+            if (ticket.priority === 'Urgente') priorityBadge = '<span class="bg-rose-50 text-rose-600 border border-rose-200 text-[10px] px-2 py-0.5 rounded-md font-semibold">🚨 Urgente</span>';
+            else if (ticket.priority === 'Alta') priorityBadge = '<span class="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] px-2 py-0.5 rounded-md font-semibold">🔴 Alta</span>';
+            else if (ticket.priority === 'Media') priorityBadge = '<span class="bg-blue-50 text-blue-600 border border-blue-200 text-[10px] px-2 py-0.5 rounded-md font-semibold">🟠 Media</span>';
+            else priorityBadge = '<span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-0.5 rounded-md font-semibold">🟢 Baja</span>';
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between gap-2">
+                    <span class="text-[10px] font-mono font-bold text-slate-400">${ticket.id}</span>
+                    <div class="flex items-center space-x-1">
+                        ${priorityBadge}
+                        <button onclick="openEditTicketModal('${ticket.id}')" class="text-slate-300 hover:text-slate-600 p-1"><i class="fa-solid fa-pen text-xs"></i></button>
+                    </div>
+                </div>
+                <h5 onclick="openEditTicketModal('${ticket.id}')" class="font-bold text-slate-800 text-xs hover:text-brand-600 cursor-pointer line-clamp-2">${ticket.title}</h5>
+                ${ticket.description ? `<p class="text-[11px] text-slate-500 line-clamp-2">${ticket.description}</p>` : ''}
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
+                    <div class="flex items-center space-x-1.5" title="Asignado a: ${assignee.name}">
+                        <div class="w-5 h-5 rounded-full ${assignee.color} text-white font-bold text-[9px] flex items-center justify-center">${assignee.initials || '??'}</div>
+                        <span class="text-slate-600 truncate max-w-[100px]">${assignee.name}</span>
+                    </div>
+                    ${ticket.dueDate ? `<div class="flex items-center space-x-1 text-slate-400"><i class="fa-regular fa-calendar text-[10px]"></i><span>${ticket.dueDate}</span></div>` : ''}
+                </div>
+            `;
+            return card;
+        }
+
+        function renderListView(filteredTickets) {
+            const tbody = document.getElementById('list-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            filteredTickets.forEach(ticket => {
+                const assignee = teamMembers.find(m => m.id === ticket.assigneeId) || { name: 'Sin asignar', initials: '?', color: 'bg-slate-400' };
+                const status = statuses.find(s => s.id === ticket.statusId) || { title: 'Desconocido', color: 'bg-slate-400' };
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition";
+                tr.innerHTML = `
+                    <td class="py-3 px-4"><div class="font-bold text-slate-800">${ticket.title}</div><div class="text-[10px] text-slate-400 font-mono">${ticket.id}</div></td>
+                    <td class="py-3 px-4"><span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700"><span class="w-2 h-2 rounded-full ${status.color}"></span><span>${status.title}</span></span></td>
+                    <td class="py-3 px-4 text-slate-600">${ticket.type}</td>
+                    <td class="py-3 px-4"><span class="font-semibold text-slate-700">${ticket.priority}</span></td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-6 h-6 rounded-full ${assignee.color} text-white font-bold text-[10px] flex items-center justify-center">${assignee.initials || '??'}</div>
+                            <span class="text-slate-700">${assignee.name}</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-slate-500">${ticket.dueDate || 'Sin fecha'}</td>
+                    <td class="py-3 px-4 text-right space-x-2">
+                        <button onclick="openEditTicketModal('${ticket.id}')" class="text-slate-400 hover:text-brand-600 p-1"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteTicket('${ticket.id}')" class="text-slate-400 hover:text-rose-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openTicketModal() {
+            document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-square-plus text-brand-500 mr-2"></i> Nuevo Ticket';
+            document.getElementById('ticket-id').value = '';
+            document.getElementById('ticket-form').reset();
+            document.getElementById('comments-section').classList.add('hidden');
+            document.getElementById('btn-delete-ticket-modal').classList.add('hidden');
+            populateModalSelects();
+            document.getElementById('ticket-modal').classList.remove('hidden');
+        }
+
+        function openTicketModalWithStatus(statusId) {
+            openTicketModal();
+            document.getElementById('ticket-status-input').value = statusId;
+        }
+
+        function openEditTicketModal(ticketId) {
+            const ticket = tickets.find(t => t.id === ticketId);
+            if (!ticket) return;
+
+            document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-500 mr-2"></i> Editar Ticket (${ticket.id})`;
+            document.getElementById('ticket-id').value = ticket.id;
+            document.getElementById('ticket-title-input').value = ticket.title;
+            document.getElementById('ticket-type-input').value = ticket.type;
+            document.getElementById('ticket-priority-input').value = ticket.priority;
+            document.getElementById('ticket-duedate-input').value = ticket.dueDate || '';
+            document.getElementById('ticket-desc-input').value = ticket.description || '';
+
+            populateModalSelects();
+            document.getElementById('ticket-status-input').value = ticket.statusId;
+            document.getElementById('ticket-assignee-input').value = ticket.assigneeId;
+
+            renderCommentsList(ticket);
+            document.getElementById('comments-section').classList.remove('hidden');
+            document.getElementById('btn-delete-ticket-modal').classList.remove('hidden');
+            document.getElementById('ticket-modal').classList.remove('hidden');
+        }
+
+        function closeTicketModal() {
+            document.getElementById('ticket-modal').classList.add('hidden');
+        }
+
+        function populateModalSelects() {
+            const statusSel = document.getElementById('ticket-status-input');
+            statusSel.innerHTML = '';
+            statuses.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.innerText = s.title;
+                statusSel.appendChild(opt);
+            });
+
+            const assigneeSel = document.getElementById('ticket-assignee-input');
+            assigneeSel.innerHTML = '<option value="">-- Sin asignar --</option>';
+            teamMembers.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.innerText = m.name;
+                assigneeSel.appendChild(opt);
+            });
+        }
+
+        function handleTicketFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('ticket-id').value;
+            const title = document.getElementById('ticket-title-input').value.trim();
+            const type = document.getElementById('ticket-type-input').value;
+            const priority = document.getElementById('ticket-priority-input').value;
+            const statusId = document.getElementById('ticket-status-input').value;
+            const assigneeId = document.getElementById('ticket-assignee-input').value;
+            const dueDate = document.getElementById('ticket-duedate-input').value;
+            const description = document.getElementById('ticket-desc-input').value.trim();
+
+            if (id) {
+                const t = tickets.find(x => x.id === id);
+                if (t) {
+                    t.title = title;
+                    t.type = type;
+                    t.priority = priority;
+                    t.statusId = statusId;
+                    t.assigneeId = assigneeId;
+                    t.dueDate = dueDate;
+                    t.description = description;
+                    notifyStateChange(`Ticket modificado: ${t.id} - "${title}"`);
+                }
+            } else {
+                const newTicketId = 'TCK-' + Math.floor(100 + Math.random() * 900);
+                const newTicket = {
+                    id: newTicketId,
+                    title,
+                    type,
+                    priority,
+                    statusId,
+                    assigneeId,
+                    dueDate,
+                    description,
+                    comments: []
+                };
+                tickets.unshift(newTicket);
+                notifyStateChange(`Ticket creado: ${newTicketId} - "${title}"`);
+            }
+
+            closeTicketModal();
+        }
+
+        function updateTicketStatus(ticketId, newStatusId) {
+            const t = tickets.find(x => x.id === ticketId);
+            if (t) {
+                t.statusId = newStatusId;
+                const statusObj = statuses.find(s => s.id === newStatusId);
+                notifyStateChange(`Estado actualizado: ${t.id} movido a "${statusObj ? statusObj.title : newStatusId}"`);
+            }
+        }
+
+        function deleteTicket(ticketId) {
+            const t = tickets.find(x => x.id === ticketId);
+            if (confirm(`¿Estás seguro de eliminar el ticket ${ticketId}?`)) {
+                tickets = tickets.filter(item => item.id !== ticketId);
+                notifyStateChange(`Ticket eliminado: ${ticketId} (${t ? t.title : ''})`);
+            }
+        }
+
+        function deleteCurrentEditingTicket() {
+            const id = document.getElementById('ticket-id').value;
+            if (id) {
+                closeTicketModal();
+                deleteTicket(id);
+            }
+        }
+
+        function renderCommentsList(ticket) {
+            const list = document.getElementById('comments-list');
+            list.innerHTML = '';
+            if (!ticket.comments || ticket.comments.length === 0) {
+                list.innerHTML = '<p class="text-[11px] text-slate-400 italic">No hay comentarios aún.</p>';
+                return;
+            }
+            ticket.comments.forEach(c => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs space-y-1";
+                div.innerHTML = `
+                    <div class="flex items-center justify-between font-semibold text-slate-700">
+                        <span>${c.author}</span>
+                        <span class="text-[10px] text-slate-400 font-normal">${c.date}</span>
+                    </div>
+                    <p class="text-slate-600">${c.text}</p>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function addCommentToTicket() {
+            const id = document.getElementById('ticket-id').value;
+            const input = document.getElementById('new-comment-input');
+            const text = input.value.trim();
+            if (!id || !text) return;
+
+            const t = tickets.find(x => x.id === id);
+            if (t) {
+                if (!t.comments) t.comments = [];
+                const authorName = currentUser ? currentUser.name : 'Usuario';
+                t.comments.push({ author: authorName, text: text, date: new Date().toISOString().split('T')[0] });
+                input.value = '';
+                renderCommentsList(t);
+                notifyStateChange(`Comentario añadido en ${t.id} por ${authorName}`);
+            }
+        }
+
+        // Team Management
+        function openTeamModal() { renderTeamList(); document.getElementById('team-modal').classList.remove('hidden'); }
+        function closeTeamModal() { document.getElementById('team-modal').classList.add('hidden'); }
+
+        function renderTeamList() {
+            const container = document.getElementById('team-list-container');
+            container.innerHTML = '';
+            teamMembers.forEach(m => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs";
+                div.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <div class="w-7 h-7 rounded-full ${m.color || 'bg-brand-600'} text-white font-bold text-[10px] flex items-center justify-center">${m.initials || '??'}</div>
+                        <div><p class="font-bold text-slate-800">${m.name}</p><p class="text-[10px] text-slate-400">${m.email}</p></div>
+                    </div>
+                    <button onclick="deleteTeamMember('${m.id}')" class="text-slate-400 hover:text-rose-600 p-1" title="Borrar miembro"><i class="fa-solid fa-trash"></i></button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function handleAddTeamMember(e) {
+            e.preventDefault();
+            const name = document.getElementById('team-new-name').value.trim();
+            const email = document.getElementById('team-new-email').value.trim();
+            if (!name || !email) return;
+
+            const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+            const newMember = { id: 'usr_' + Date.now(), name, email, initials, color: 'bg-brand-600' };
+            teamMembers.push(newMember);
+            document.getElementById('team-add-form').reset();
+            notifyStateChange(`Nuevo miembro añadido: ${name}`);
+            renderTeamList();
+        }
+
+        function deleteTeamMember(memberId) {
+            if (teamMembers.length <= 1) { alert('Debe haber al menos un miembro en el equipo.'); return; }
+            if (confirm('¿Eliminar a este miembro? Sus tickets asignados pasarán a estar "Sin asignar".')) {
+                const memberObj = teamMembers.find(m => m.id === memberId);
+                teamMembers = teamMembers.filter(m => m.id !== memberId);
+                tickets.forEach(t => { if (t.assigneeId === memberId) t.assigneeId = ''; });
+                notifyStateChange(`Miembro eliminado: ${memberObj ? memberObj.name : memberId}`);
+                renderTeamList();
+            }
+        }
+
+        // Status Management
+        function openManageStatusesModal() { renderStatusesList(); document.getElementById('status-modal').classList.remove('hidden'); }
+        function closeManageStatusesModal() { document.getElementById('status-modal').classList.add('hidden'); }
+
+        function renderStatusesList() {
+            const list = document.getElementById('statuses-manage-list');
+            list.innerHTML = '';
+            statuses.forEach(s => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs";
+                div.innerHTML = `
+                    <div class="flex items-center space-x-2"><span class="w-3 h-3 rounded-full ${s.color}"></span><span class="font-bold text-slate-800">${s.title}</span></div>
+                    <button onclick="deleteStatus('${s.id}')" class="text-slate-400 hover:text-rose-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function addNewStatus() {
+            const input = document.getElementById('new-status-name');
+            const title = input.value.trim();
+            if (!title) return;
+            const colors = ['bg-indigo-500', 'bg-violet-500', 'bg-pink-500', 'bg-teal-500'];
+            const newSt = { id: 'st_' + Date.now(), title, color: colors[Math.floor(Math.random() * colors.length)], order: statuses.length + 1 };
+            statuses.push(newSt);
+            input.value = '';
+            notifyStateChange(`Nuevo estado creado: "${title}"`);
+            renderStatusesList();
+        }
+
+        function deleteStatus(statusId) {
+            if (statuses.length <= 2) { alert('El tablero necesita al menos dos estados.'); return; }
+            if (confirm('¿Eliminar este estado? Los tickets pasarán al primer estado.')) {
+                statuses = statuses.filter(s => s.id !== statusId);
+                tickets.forEach(t => { if (t.statusId === statusId) t.statusId = statuses[0].id; });
+                notifyStateChange(`Estado eliminado del tablero`);
+                renderStatusesList();
+            }
+        }
+
+        // History & Audit Log
+        function openHistoryModal() {
+            renderHistoryList();
+            document.getElementById('history-modal').classList.remove('hidden');
+        }
+        function closeHistoryModal() {
+            document.getElementById('history-modal').classList.add('hidden');
+        }
+
+        function renderHistoryList() {
+            const container = document.getElementById('history-list-container');
+            container.innerHTML = '';
+            if (!historyLogs || historyLogs.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 italic">No hay registros en el historial todavía.</p>';
+                return;
+            }
+            historyLogs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1 flex items-start justify-between";
+                div.innerHTML = `
+                    <div class="space-y-0.5">
+                        <p class="font-semibold text-slate-800">${log.text}</p>
+                        <p class="text-[10px] text-slate-400">Autor: <span class="font-medium text-slate-600">${log.author}</span></p>
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-mono whitespace-nowrap ml-2">${log.date}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function resetFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('filter-assignee').value = 'ALL';
+            document.getElementById('filter-priority').value = 'ALL';
+            document.getElementById('filter-type').value = 'ALL';
+            renderApp();
+        }
+    </script>
+</body>
+</html>
